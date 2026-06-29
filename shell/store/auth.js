@@ -1,4 +1,4 @@
-import { GITHUB_NONCE, GITHUB_REDIRECT, GITHUB_SCOPE } from '@shell/config/query-params';
+import { BACK_TO, GITHUB_NONCE, GITHUB_REDIRECT, GITHUB_SCOPE } from '@shell/config/query-params';
 import { MANAGEMENT, EXT } from '@shell/config/types';
 import { addObjects, findBy, joinStringList } from '@shell/utils/array';
 import { openAuthPopup, returnTo } from '@shell/utils/auth';
@@ -270,6 +270,10 @@ export const actions = {
 
       redirectUrl = addParams(redirectUrl, params );
       returnToUrl = `${ window.location.origin }/verify-auth-azure`;
+    }
+
+    if (opt.backTo) {
+      returnToUrl = addParams(returnToUrl, { [BACK_TO]: opt.backTo });
     }
 
     // The base nonce that will be sent server way

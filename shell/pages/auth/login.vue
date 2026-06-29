@@ -32,6 +32,7 @@ import Loading from '@shell/components/Loading';
 import { HARVESTER_NAME as HARVESTER } from '@shell/config/features';
 import TabTitle from '@shell/components/TabTitle.vue';
 import { getBrandMeta } from '@shell/utils/brand';
+import { EMBEDDED_GENERIC_OIDC_REDIRECT_KEY } from '@shell/utils/auth';
 
 export default {
   name:       'Login',
@@ -53,13 +54,14 @@ export default {
       err:                this.$route.query.err,
       showLocaleSelector: !process.env.loginLocaleSelector || process.env.loginLocaleSelector === 'true',
 
-      hasLocal:           false,
-      showLocal:          false,
-      providers:          [],
-      providerComponents: [],
-      customLoginError:   {},
-      firstLogin:         false,
-      vendor:             getVendor()
+      hasLocal:                       false,
+      showLocal:                      false,
+      providers:                      [],
+      providerComponents:             [],
+      customLoginError:               {},
+      firstLogin:                     false,
+      vendor:                         getVendor(),
+      embeddedGenericOidcRedirecting: false
     };
   },
 
@@ -155,6 +157,10 @@ export default {
     }
   },
 
+  mounted() {
+    this.redirectEmbeddedGenericOidc();
+  },
+
   async fetch() {
     const cookie = this.$store.getters['cookies/get']({ key: USERNAME, options: { parseJSON: false } });
     const username = cookie || '';
@@ -186,12 +192,68 @@ export default {
       return markRaw(this.$store.getters['type-map/importLogin'](configType[name] || name));
     });
 
+    await this.redirectEmbeddedGenericOidc();
+
     this.$nextTick(() => {
       this.focusSomething();
     });
   },
 
   methods: {
+    isEmbedded() {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    },
+
+    shouldAutoLoginEmbedded() {
+      return this.isEmbedded() &&
+        !this.firstLogin &&
+        this.providers.includes('genericoidc') &&
+        !this.embeddedGenericOidcRedirecting &&
+        !this.hasRedirectedEmbeddedGenericOidc();
+    },
+
+    async redirectEmbeddedGenericOidc() {
+      if (!this.shouldAutoLoginEmbedded()) {
+        return;
+      }
+
+      this.embeddedGenericOidcRedirecting = true;
+      this.setRedirectedEmbeddedGenericOidc();
+      await this.$store.dispatch('auth/redirectTo', {
+        provider: 'genericoidc',
+        backTo:   this.embeddedGenericOidcBackTo()
+      });
+    },
+
+    embeddedGenericOidcBackTo() {
+      const authRedirect = this.$store.state?.prefs?.authRedirect;
+
+      if (authRedirect) {
+        return this.$router.resolve(authRedirect).href;
+      }
+
+      return '/';
+    },
+
+    hasRedirectedEmbeddedGenericOidc() {
+      try {
+        return window.sessionStorage.getItem(EMBEDDED_GENERIC_OIDC_REDIRECT_KEY) === 'true';
+      } catch (e) {
+        return false;
+      }
+    },
+
+    setRedirectedEmbeddedGenericOidc() {
+      try {
+        window.sessionStorage.setItem(EMBEDDED_GENERIC_OIDC_REDIRECT_KEY, 'true');
+      } catch (e) {
+      }
+    },
+
     async loadInitialSettings() {
       let firstLoginSetting, plSetting, brand;
 

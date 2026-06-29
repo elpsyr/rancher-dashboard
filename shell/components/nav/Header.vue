@@ -54,6 +54,13 @@ export default {
     simple: {
       type:    Boolean,
       default: false
+    },
+    // When true, hides the brand logo shown in the simple header. Used by the
+    // home layout when the dashboard is embedded in an iframe so the host page
+    // owns the branding instead.
+    hideSimpleLogo: {
+      type:    Boolean,
+      default: false
     }
   },
 
@@ -535,7 +542,7 @@ export default {
       </div>
 
       <div
-        v-else
+        v-else-if="!hideSimpleLogo"
         class="side-menu-logo"
       >
         <BrandImage

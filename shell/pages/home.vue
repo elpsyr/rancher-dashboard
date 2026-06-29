@@ -36,6 +36,7 @@ import paginationUtils from '@shell/utils/pagination-utils';
 import ResourceTable from '@shell/components/ResourceTable.vue';
 import Preset from '@shell/mixins/preset';
 import { PaginationFeatureHomePageClusterConfig } from '@shell/types/resources/settings';
+import { isEmbedded } from '@shell/utils/auth';
 
 export default defineComponent({
   name:       'Home',
@@ -236,6 +237,11 @@ export default defineComponent({
     ...mapState(['managementReady']),
     ...mapGetters(['currentCluster', 'defaultClusterId']),
     mcm: mapFeature(MULTI_CLUSTER),
+
+    // Whether the dashboard is running embedded in an iframe. When true, the
+    // welcome banner and side panel (community links) are hidden so the host
+    // page controls branding and navigation.
+    isEmbedded,
 
     vaiOnSettingsHeaders() {
       return [
@@ -617,12 +623,16 @@ export default defineComponent({
       {{ `${vendor} - ${t('landing.homepage')}` }}
     </TabTitle>
     <BannerGraphic
+      v-if="!isEmbedded"
       :title="t('landing.welcomeToRancher', {vendor})"
       :pref="HIDE_HOME_PAGE_CARDS"
       pref-key="welcomeBanner"
       data-testid="home-banner-graphic"
     />
-    <DynamicContentBanner location="banner" />
+    <DynamicContentBanner
+      v-if="!isEmbedded"
+      location="banner"
+    />
     <IndentedPanel class="mt-20 mb-20">
       <div class="row home-panels">
         <div class="col main-panel">
@@ -949,7 +959,10 @@ export default defineComponent({
             </div>
           </div>
         </div>
-        <div class="col span-3 side-panel">
+        <div
+          v-if="!isEmbedded"
+          class="col span-3 side-panel"
+        >
           <CommunityLinks />
           <DynamicContentPanel location="rhs" />
         </div>

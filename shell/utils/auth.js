@@ -10,6 +10,31 @@ import { onExtensionsReady } from '@shell/utils/uiplugins';
 
 export const AUTH_BROADCAST_CHANNEL_NAME = 'rancher-auth-test-callback';
 
+export const EMBEDDED_GENERIC_OIDC_REDIRECT_KEY = 'embeddedGenericOidcRedirecting';
+
+export function isEmbedded() {
+  try {
+    return window.self !== window.top;
+  } catch (e) {
+    return true;
+  }
+}
+
+export function hasRedirectedEmbeddedGenericOidc() {
+  try {
+    return window.sessionStorage.getItem(EMBEDDED_GENERIC_OIDC_REDIRECT_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+export function setRedirectedEmbeddedGenericOidc() {
+  try {
+    window.sessionStorage.setItem(EMBEDDED_GENERIC_OIDC_REDIRECT_KEY, 'true');
+  } catch (e) {
+  }
+}
+
 export function openAuthPopup(url, provider) {
   const popup = new Popup(() => {
     popup.promise = new Promise((resolve, reject) => {
@@ -273,13 +298,73 @@ export async function isLoggedIn(store, userData) {
 }
 
 /**
- * Record in our state management that we're not logged in and then redirect to the login page
+ * In embedded (iframe) mode, when Generic OIDC is an enabled auth provider, redirect
+ * directly to the OIDC provider instead of first bouncing through the login page.
+ *
+ * `/v1-public/authproviders` only returns enabled providers, so the presence of
+ * `genericoidc` implies the initial setup is already complete.
+ *
+ * Returns `true` when a redirect to the OIDC provider has been triggered.
  */
-export function notLoggedIn(store, redirect, route) {
+export async function tryEmbeddedGenericOidcLogin(store, route) {
+  if (!isEmbedded()) {
+    return false;
+  }
+
+  if (hasRedirectedEmbeddedGenericOidc()) {
+    return false;
+  }
+
+  let drivers;
+
+  try {
+    drivers = await store.dispatch('auth/getAuthProviders');
+  } catch (e) {
+    return false;
+  }
+
+  const providers = (drivers || []).map((d) => d.id);
+
+  if (!providers.includes('genericoidc')) {
+    return false;
+  }
+
+  setRedirectedEmbeddedGenericOidc();
+
+  const authRedirect = store.state?.prefs?.authRedirect;
+  let backTo = '/';
+
+  if (authRedirect) {
+    if (store.$router) {
+      backTo = store.$router.resolve(authRedirect).href;
+    } else if (authRedirect.fullPath) {
+      backTo = authRedirect.fullPath;
+    }
+  }
+
+  await store.dispatch('auth/redirectTo', {
+    provider: 'genericoidc',
+    backTo,
+  });
+
+  return true;
+}
+
+/**
+ * Record in our state management that we're not logged in and then redirect to the login page.
+ *
+ * In embedded mode with Generic OIDC enabled, skip the login page and redirect directly to
+ * the OIDC provider.
+ */
+export async function notLoggedIn(store, redirect, route) {
   store.commit('auth/hasAuth', true);
 
   if (!route.name.includes('auth')) {
     store.commit('prefs/setAuthRedirect', route);
+  }
+
+  if (await tryEmbeddedGenericOidcLogin(store, route)) {
+    return;
   }
 
   if ( route.name === 'index' ) {

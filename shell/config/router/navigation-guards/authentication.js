@@ -77,7 +77,7 @@ export async function authenticate(to, from, next, { store }) {
       await isLoggedIn(store, getUserObject(user, me));
       handleOidcRedirectToCallbackUrl();
     } else if ( fromHeader === 'false' ) {
-      notLoggedIn(store, next, to);
+      await notLoggedIn(store, next, to);
 
       return;
     } else {
@@ -94,7 +94,7 @@ export async function authenticate(to, from, next, { store }) {
           noAuth(store);
         } else {
           if ( status === 401 ) {
-            notLoggedIn(store, next, to);
+            await notLoggedIn(store, next, to);
           } else {
             store.commit('setError', { error: e, locationError: new Error('Auth Middleware') });
           }

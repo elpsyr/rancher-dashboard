@@ -51,6 +51,26 @@ describe('action: redirectTo', () => {
     expect(url).toStrictEqual(expectation);
   });
 
+  it('adds the back-to target to the verification redirect URL', async() => {
+    jest.spyOn(window, 'window', 'get');
+    const store = {
+      dispatch: jest.fn((x) => {
+        if (x === 'getAuthProvider') return { scopes: '' };
+      })
+    };
+    const uri = 'anyURI';
+    const options = {
+      provider:    'genericoidc',
+      redirect:    false,
+      redirectUrl: 'myhost',
+      backTo:      '/c/local/explorer',
+    };
+
+    const url = await actions.redirectTo(store as any, options);
+
+    expect(url).toContain('redirect_uri=http%3A%2F%2Flocalhost%2Fverify-auth%3Fback-to%3D%252Fc%252Flocal%252Fexplorer');
+  });
+
   describe.each([
     // 'whatever',
     // 'github',

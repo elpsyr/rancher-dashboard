@@ -107,4 +107,47 @@ describe('getters', () => {
       expect(result).toStrictEqual(expectation);
     });
   });
+
+  describe('showTopLevelMenu', () => {
+    const originalTop = window.top;
+
+    afterEach(() => {
+      // Restore the non-embedded (top-level) window state
+      Object.defineProperty(window, 'top', {
+        configurable: true,
+        get() {
+          return window.self;
+        }
+      });
+    });
+
+    it('hides the side menu when embedded in an iframe', () => {
+      Object.defineProperty(window, 'top', {
+        configurable: true,
+        get() {
+          return {} as Window;
+        }
+      });
+
+      // Even when the dashboard would normally show the top-level menu, the
+      // embedded mode must hide it so the host page controls navigation.
+      const stateGetters = {
+        isRancherInHarvester: true,
+        isMultiCluster:       true,
+        isSingleProduct:      () => false,
+      };
+
+      expect(getters.showTopLevelMenu({}, stateGetters)).toStrictEqual(false);
+    });
+
+    it('shows the side menu when not embedded and multi-cluster', () => {
+      const stateGetters = {
+        isRancherInHarvester: false,
+        isMultiCluster:       true,
+        isSingleProduct:      () => false,
+      };
+
+      expect(getters.showTopLevelMenu({}, stateGetters)).toStrictEqual(true);
+    });
+  });
 });

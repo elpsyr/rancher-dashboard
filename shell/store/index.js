@@ -34,6 +34,7 @@ import {
 import { allHash, allHashSettled } from '@shell/utils/promise';
 import { sortBy } from '@shell/utils/sort';
 import { addParam } from '@shell/utils/url';
+import { isEmbedded } from '@shell/utils/auth';
 import semver from 'semver';
 import { STORE, BLANK_CLUSTER } from '@shell/store/store-types';
 import { getReleaseNotesURL } from '@shell/utils/version';
@@ -610,6 +611,12 @@ export const getters = {
   },
 
   showTopLevelMenu(getters) {
+    // When the dashboard is embedded in an iframe, hide the side menu (top-level
+    // navigation) so the host page controls navigation instead.
+    if (isEmbedded()) {
+      return false;
+    }
+
     return getters['isRancherInHarvester'] || getters['isMultiCluster'] || !getters['isSingleProduct'];
   },
 
