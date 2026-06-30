@@ -12,7 +12,6 @@ import Inactivity from '@shell/components/Inactivity';
 import { mapState, mapGetters } from 'vuex';
 import PromptModal from '@shell/components/PromptModal';
 import { Layout } from '@shell/types/window-manager';
-import { isEmbedded } from '@shell/utils/auth';
 
 export default {
 
@@ -43,12 +42,6 @@ export default {
     themeShortcut: mapPref(THEME_SHORTCUT),
     ...mapState(['managementReady']),
     ...mapGetters(['showTopLevelMenu']),
-
-    // Hide the brand logo in the simple header when embedded so the host page
-    // owns the branding.
-    hideSimpleLogo() {
-      return isEmbedded();
-    },
   },
 
   mounted() {
@@ -81,7 +74,6 @@ export default {
       <Header
         v-if="managementReady"
         :simple="true"
-        :hide-simple-logo="hideSimpleLogo"
       />
 
       <main

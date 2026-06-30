@@ -22,6 +22,7 @@ import IconOrSvg from '@shell/components/IconOrSvg';
 import { wait } from '@shell/utils/async';
 import { configType } from '@shell/models/management.cattle.io.authconfig';
 import HeaderPageActionMenu from './HeaderPageActionMenu.vue';
+import { isEmbedded } from '@shell/utils/auth';
 import NotificationCenter from './NotificationCenter';
 import {
   RcDropdown,
@@ -55,12 +56,21 @@ export default {
       type:    Boolean,
       default: false
     },
-    // When true, hides the brand logo shown in the simple header. Used by the
-    // home layout when the dashboard is embedded in an iframe so the host page
-    // owns the branding instead.
+    // When true, hides the brand logo shown in the simple header. When the
+    // dashboard is embedded in an iframe this defaults to true so the host page
+    // owns the branding instead, but it can be explicitly overridden.
     hideSimpleLogo: {
       type:    Boolean,
-      default: false
+      default: null
+    },
+    // When true, hides the `center-self` part of the header (page actions,
+    // notifications and the user menu). When the dashboard is embedded in an
+    // iframe this defaults to true so the host page owns those controls
+    // instead, but it can be explicitly overridden. The namespace filter,
+    // search and other header buttons are left visible.
+    hideCenterSelf: {
+      type:    Boolean,
+      default: null
     }
   },
 
@@ -106,6 +116,20 @@ export default {
       'showTopLevelMenu',
       'showWorkspaceSwitcher'
     ]),
+
+    // Whether the dashboard is running inside an iframe. When it is, the host
+    // page owns branding and the user-facing header controls, so we hide the
+    // logo and the `center-self` (page actions, notifications and user menu)
+    // on every page rather than just the home dashboard. The namespace filter
+    // and search remain usable. Callers can still force a value via the
+    // `hideSimpleLogo` and `hideCenterSelf` props.
+    hideSimpleLogoState() {
+      return this.hideSimpleLogo === null ? isEmbedded() : this.hideSimpleLogo;
+    },
+
+    hideCenterSelfState() {
+      return this.hideCenterSelf === null ? isEmbedded() : this.hideCenterSelf;
+    },
 
     sloAuthProviderEnabled() {
       const publicAuthProviders = this.$store.getters['rancher/all']('authProvider');
@@ -542,7 +566,7 @@ export default {
       </div>
 
       <div
-        v-else-if="!hideSimpleLogo"
+        v-else-if="!hideSimpleLogoState"
         class="side-menu-logo"
       >
         <BrandImage
@@ -556,7 +580,9 @@ export default {
 
     <div class="spacer" />
 
-    <div class="rd-header-right">
+    <div
+      class="rd-header-right"
+    >
       <component :is="navHeaderRight" />
       <div
         v-if="showFilter"
@@ -688,7 +714,10 @@ export default {
         </button>
       </div>
 
-      <div class="center-self">
+      <div
+        v-if="!hideCenterSelfState"
+        class="center-self"
+      >
         <header-page-action-menu v-if="showPageActions" />
         <NotificationCenter />
         <rc-dropdown
